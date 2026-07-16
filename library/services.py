@@ -107,6 +107,8 @@ class BorrowService:
                     self.borrow_repo.update(r)
 
     def borrow(self, book_id: str, reader_id: str) -> BorrowRecord:
+        self.sync_overdue()
+
         book = self.book_repo.get_by_id(book_id)
         if not book:
             raise ValueError(f"图书 {book_id} 不存在")
@@ -130,11 +132,7 @@ class BorrowService:
         today = date.today()
         due = today + timedelta(days=self.BORROW_DAYS)
 
-        # Update book stock
-        book.stock -= 1
-        self.book_repo.update(book)
-
-        # Create record
+        # Create record first
         record = BorrowRecord(
             record_id="",
             book_id=book_id,
@@ -142,26 +140,31 @@ class BorrowService:
             borrow_date=today.isoformat(),
             due_date=due.isoformat(),
         )
-        return self.borrow_repo.add(record)
+        record = self.borrow_repo.add(record)
+
+        # Then update book stock
+        book.stock -= 1
+        self.book_repo.update(book)
+        return record
 
     def return_book(self, record_id: str) -> BorrowRecord:
         record = self.borrow_repo.get_by_id(record_id)
         if not record:
             raise ValueError(f"借阅记录 {record_id} 不存在")
-        if record.status not in ("borrowed", "overdue"):
-            raise ValueError(f"该记录状态为 {record.status}，无需归还")
+        if record.return_date is not None:
+            raise ValueError("该记录已归还，无需重复操作")
 
-        # Restore stock
-        book = self.book_repo.get_by_id(record.book_id)
-        if book:
-            book.stock += 1
-            self.book_repo.update(book)
-
-        # Update record
+        # Update record first (source of truth for "returned")
         today = date.today()
         record.return_date = today.isoformat()
         record.status = "overdue" if date.fromisoformat(record.due_date) < today else "returned"
         self.borrow_repo.update(record)
+
+        # Then restore stock
+        book = self.book_repo.get_by_id(record.book_id)
+        if book:
+            book.stock += 1
+            self.book_repo.update(book)
         return record
 
     def list_records(self, book_id: str = "", reader_id: str = "",
@@ -228,9 +231,7 @@ class StatsService:
         books = self.book_repo.get_all()
         readers = self.reader_repo.get_all()
         records = self.borrow_repo.get_all()
-        active = self.borrow_repo.get_overdue() + [
-            r for r in records if r.status == "borrowed"
-        ]
+        active = [r for r in records if r.return_date is None]
         return {
             "total_books": len(books),
             "total_readers": len(readers),

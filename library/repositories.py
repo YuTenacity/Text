@@ -228,13 +228,14 @@ class BorrowRepository(BaseRepository):
         return [r for r in self._load() if r.reader_id == reader_id]
 
     def get_active_by_reader(self, reader_id: str) -> list[BorrowRecord]:
-        return [r for r in self._load() if r.reader_id == reader_id and r.status in ("borrowed", "overdue")]
+        return [r for r in self._load() if r.reader_id == reader_id and r.return_date is None]
 
     def get_active_by_book(self, book_id: str) -> list[BorrowRecord]:
-        return [r for r in self._load() if r.book_id == book_id and r.status in ("borrowed", "overdue")]
+        return [r for r in self._load() if r.book_id == book_id and r.return_date is None]
 
     def get_overdue(self) -> list[BorrowRecord]:
-        return [r for r in self._load() if r.status == "overdue"]
+        """Overdue AND not yet returned (逾期未还)."""
+        return [r for r in self._load() if r.status == "overdue" and r.return_date is None]
 
     def update(self, record: BorrowRecord) -> bool:
         records = self._load()
