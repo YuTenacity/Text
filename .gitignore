@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 library_data/
 .superpowers/
+测试.py
+数码管.py
+素数.py
+星期计算.py
