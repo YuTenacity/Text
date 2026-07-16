@@ -6,6 +6,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = str(PROJECT_ROOT / "library_data")
 
+# Allow running as `python library/main.py` from anywhere
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from library.repositories import BookRepository, ReaderRepository, BorrowRepository
 from library.services import BookService, ReaderService, BorrowService, StatsService
 from library.cli import LibraryCLI
@@ -30,7 +34,7 @@ def main():
     cli = LibraryCLI(book_service, reader_service, borrow_service, stats_service)
     try:
         cli.run()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\n\n再见！")
         sys.exit(0)
 

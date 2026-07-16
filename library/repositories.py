@@ -26,7 +26,7 @@ class BaseRepository:
             self._load_raw()
         except (json.JSONDecodeError, FileNotFoundError):
             backup = str(path) + ".backup"
-            path.rename(backup)
+            path.replace(backup)
             self._save_raw(self.default_data)
 
     def _load_raw(self) -> list:

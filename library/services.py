@@ -1,5 +1,5 @@
 """Business logic services."""
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 from typing import Optional
 
 from library.models import Book, Reader, BorrowRecord
@@ -15,6 +15,8 @@ class BookService:
             raise ValueError("书名不能为空")
         if stock < 0:
             raise ValueError("库存不能为负数")
+        if isbn.strip() and any(b.isbn == isbn.strip() for b in self.repo.get_all()):
+            raise ValueError(f"ISBN {isbn.strip()} 已存在")
         today = date.today().isoformat()
         book = Book(book_id="", title=title.strip(), author=author.strip(),
                     isbn=isbn.strip(), category=category.strip(), stock=stock, created_at=today)
@@ -53,6 +55,8 @@ class ReaderService:
     def add_reader(self, name: str, phone: str, max_borrow: int = 3) -> Reader:
         if not name.strip():
             raise ValueError("读者姓名不能为空")
+        if phone.strip() and not phone.strip().isdigit():
+            raise ValueError("电话号码只能包含数字")
         today = date.today().isoformat()
         reader = Reader(reader_id="", name=name.strip(), phone=phone.strip(),
                         max_borrow=max_borrow, created_at=today)
