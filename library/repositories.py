@@ -34,8 +34,10 @@ class BaseRepository:
             return json.load(f)
 
     def _save_raw(self, data: list):
-        with open(self.filepath, "w", encoding="utf-8") as f:
+        tmp_path = self.filepath + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, self.filepath)
 
 
 class BookRepository(BaseRepository):
@@ -54,7 +56,13 @@ class BookRepository(BaseRepository):
     def _next_id(self, books: list[Book]) -> str:
         if not books:
             return "B001"
-        max_num = max(int(b.book_id[1:]) for b in books)
+        nums = []
+        for b in books:
+            try:
+                nums.append(int(b.book_id[1:]))
+            except (ValueError, IndexError):
+                continue
+        max_num = max(nums) if nums else 0
         return f"B{max_num + 1:03d}"
 
     def add(self, book: Book) -> Book:
@@ -119,7 +127,13 @@ class ReaderRepository(BaseRepository):
     def _next_id(self, readers: list[Reader]) -> str:
         if not readers:
             return "R001"
-        max_num = max(int(r.reader_id[1:]) for r in readers)
+        nums = []
+        for r in readers:
+            try:
+                nums.append(int(r.reader_id[1:]))
+            except (ValueError, IndexError):
+                continue
+        max_num = max(nums) if nums else 0
         return f"R{max_num + 1:03d}"
 
     def add(self, reader: Reader) -> Reader:
@@ -181,7 +195,13 @@ class BorrowRepository(BaseRepository):
     def _next_id(self, records: list[BorrowRecord]) -> str:
         if not records:
             return "BR001"
-        max_num = max(int(r.record_id[2:]) for r in records)
+        nums = []
+        for r in records:
+            try:
+                nums.append(int(r.record_id[2:]))
+            except (ValueError, IndexError):
+                continue
+        max_num = max(nums) if nums else 0
         return f"BR{max_num + 1:03d}"
 
     def add(self, record: BorrowRecord) -> BorrowRecord:
