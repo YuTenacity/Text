@@ -105,7 +105,14 @@ class LibraryCLI:
             author = self._input("作者: ")
             isbn = self._input("ISBN: ")
             category = self._input("分类: ")
-            stock = int(self._input("库存: ") or "0")
+            stock_str = self._input("库存: ") or "0"
+            if not stock_str.lstrip("-").isdigit():
+                print("错误: 库存请输入数字")
+                return
+            stock = int(stock_str)
+            if stock < 0:
+                print("错误: 库存不能为负数")
+                return
             book = self.bs.add_book(title, author, isbn, category, stock)
             print(f"添加成功！图书编号: {book.book_id}")
         except ValueError as e:
@@ -143,8 +150,16 @@ class LibraryCLI:
             isbn = self._input(f"ISBN [{book.isbn}]: ")
             category = self._input(f"分类 [{book.category}]: ")
             stock = self._input(f"库存 [{book.stock}]: ")
+            if stock:
+                if not stock.lstrip("-").isdigit():
+                    print("错误: 库存请输入非负数字")
+                    return
+                if int(stock) < 0:
+                    print("错误: 库存请输入非负数字")
+                    return
+                stock = int(stock)
             kwargs = {"title": title, "author": author, "isbn": isbn,
-                      "category": category, "stock": int(stock) if stock else ""}
+                      "category": category, "stock": stock}
             self.bs.update_book(book_id, **{k: v for k, v in kwargs.items() if v != ""})
             print("修改成功！")
         except ValueError as e:
@@ -217,6 +232,9 @@ class LibraryCLI:
             name = self._input("姓名: ")
             phone = self._input("电话: ")
             max_borrow = self._input("最大借阅数 [3]: ") or "3"
+            if not max_borrow.isdigit() or int(max_borrow) <= 0:
+                print("错误: 最大借阅数请输入正整数")
+                return
             reader = self.rs.add_reader(name, phone, int(max_borrow))
             print(f"添加成功！读者编号: {reader.reader_id}")
         except ValueError as e:
@@ -252,6 +270,11 @@ class LibraryCLI:
             name = self._input(f"姓名 [{reader.name}]: ")
             phone = self._input(f"电话 [{reader.phone}]: ")
             max_borrow = self._input(f"最大借阅数 [{reader.max_borrow}]: ")
+            if max_borrow:
+                if not max_borrow.isdigit() or int(max_borrow) <= 0:
+                    print("错误: 最大借阅数请输入正整数")
+                    return
+                max_borrow = int(max_borrow)
             kwargs = {"name": name, "phone": phone, "max_borrow": max_borrow}
             self.rs.update_reader(reader_id, **{k: v for k, v in kwargs.items() if v != ""})
             print("修改成功！")
@@ -333,6 +356,7 @@ class LibraryCLI:
             print(f"错误: {e}")
 
     def _borrow_records(self):
+        self.bors.sync_overdue()
         print("\n--- 借阅记录查询 ---")
         print("(直接回车表示不过滤该条件)")
         book_id = self._input("图书编号: ")
@@ -372,7 +396,14 @@ class LibraryCLI:
 
     def _top_books(self):
         print("\n--- 热门图书 ---")
-        n = int(self._input("显示前几名 [10]: ") or "10")
+        try:
+            n = int(self._input("显示前几名 [10]: ") or "10")
+        except ValueError:
+            print("错误: 请输入数字")
+            return
+        if n <= 0:
+            print("错误: 请输入正整数")
+            return
         results = self.ss.top_books(n)
         headers = ["排名", "编号", "书名", "作者", "借阅次数"]
         rows = [[str(i + 1), b.book_id, b.title, b.author, str(c)] for i, (b, c) in enumerate(results)]
@@ -388,6 +419,7 @@ class LibraryCLI:
         self._wait()
 
     def _overdue_list(self):
+        self.bors.sync_overdue()
         print("\n--- 逾期未还清单 ---")
         items = self.ss.overdue_list()
         headers = ["记录编号", "书名", "借阅人", "应还日期", "逾期天数"]
@@ -410,6 +442,7 @@ class LibraryCLI:
         self._wait()
 
     def _summary(self):
+        self.bors.sync_overdue()
         print("\n--- 总体概览 ---")
         s = self.ss.summary()
         print(f"  馆藏图书: {s['total_books']} 种")
